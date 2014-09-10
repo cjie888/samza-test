@@ -24,30 +24,37 @@ Samza Job是一段逻辑转换代码,完成从一个或多个输入流中读取�
 
 序列中的每条消息都有一个标识符，叫做偏移量,它在每一个分区中是唯一的。偏移量可以是一个连续的整数,字节偏移,或字符串，主要取决于底层的系统实现。
 
-When a message is appended to a stream, it is appended to only one of the stream’s partitions. The assignment of the message to its partition is done with a key chosen by the writer. For example, if the user ID is used as the key, that ensures that all messages related to a particular user end up in the same partition.
+当一条消息追加到流时,它仅仅追加到流的一个分区。由writer根据键选择消息分配到哪一个分区。例如,如果以用户ID作为键,确保一个用户的消息最终在同一分区内。
 
 ![stream](./pic/stream.png)
 
 ##Tasks
 
-A job is scaled by breaking it into multiple tasks. The task is the unit of parallelism of the job, just as the partition is to the stream. Each task consumes data from one partition for each of the job’s input streams.
 
-A task processes messages from each of its input partitions sequentially, in the order of message offset. There is no defined ordering across partitions. This allows each task to operate independently. The YARN scheduler assigns each task to a machine, so the job as a whole can be distributed across many machines.
+一个Job可以分解成多个任务。任务使并行工作的单位,就像流的分区一样。每个任务从一个分区的每个job的输入流消费。
 
-The number of tasks in a job is determined by the number of input partitions (there cannot be more tasks than input partitions, or there would be some tasks with no input). However, you can change the computational resources assigned to the job (the amount of memory, number of CPU cores, etc.) to satisfy the job’s needs. See notes on containers below.
 
-The assignment of partitions to tasks never changes: if a task is on a machine that fails, the task is restarted elsewhere, still consuming the same stream partitions.
+任务从每个输入分区顺序的处理消息,按照消息的偏移量。分区之间是没有顺序的。这样允许每个任务独立工作。YARN调度器将每个任务分配给一台机器,所以整个工作可以分布在许多机器。
+
+
+一个Job的任务的数量是由输入分区的数量(任务数量不能超过输入分区,否则会有一些任务没有输入)决定的。但是,你可以把计算资源分配给工作(内存,CPU核的数量,等等),以满足Job的需要。请参考下面对容器的说明。
+
+
+分区分配的任务不会改变:如果机器上的任务失败,会在其他机器重新启动任务,但仍然使用相同的流分区。
 
 ![job_detail](./pic/job_detail.png)
 
 ##Dataflow Graphs
 
-We can compose multiple jobs to create a dataflow graph, where the nodes are streams containing data, and the edges are jobs performing transformations. This composition is done purely through the streams the jobs take as input and output. The jobs are otherwise totally decoupled: they need not be implemented in the same code base, and adding, removing, or restarting a downstream job will not impact an upstream job.
 
-These graphs are often acyclic—that is, data usually doesn’t flow from a job, through other jobs, back to itself. However, it is possible to create cyclic graphs if you need to.
+我们可以组合多个job来创建一个数据流图,节点是数据流,边是job转换。这种组成是通过流的Job作为输入和输出。Job则完全解耦:他们不需要实现在同一个代码库,可以添加、删除或重新启动一个下游的Job不会影响上游Job。
+
+
+这些图表通常是无环的,数据通常不会从一个Job通过其他Job,回到本身。然而,如果你需要可以创建循环图。
 
 ![dag](./pic/dag.png)
 
 ##Containers
 
-Partitions and tasks are both logical units of parallelism—they don’t correspond to any particular assignment of computational resources (CPU, memory, disk space, etc). Containers are the unit of physical parallelism, and a container is essentially a Unix process (or Linux cgroup). Each container runs one or more tasks. The number of tasks is determined automatically from the number of partitions in the input and is fixed, but the number of containers (and the CPU and memory resources associated with them) is specified by the user at run time and can be changed at any time.
+
+分区和任务都是并行的逻辑单元，他们不依赖任何特定的计算资源(CPU、内存、磁盘空间等)。容器是物理上的并行单元，一个容器实际上是一个Unix进程(或Linux cgroup)。每个容器运行一个或多个任务。任务的数量由输入分区的数量来决定，是固定的,但是容器的数量(和与它们相关的CPU和内存资源)是由用户在运行时指定的,随时可以改变。
