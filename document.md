@@ -2,7 +2,7 @@
 
 ###Background
 ###[Concepts](./doc/concept.md)
-###Architecture
+###[Architecture](./doc/architecture.md)
 
 ##Comparisons
 
