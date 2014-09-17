@@ -6,10 +6,10 @@
 
 ##Comparisons
 
-###Introduction
-####MUPD8
-####Storm
-####Spark Streaming
+###[Introduction](./doc/comparison_introduction.md)
+###MUPD8
+###Storm
+###Spark Streaming
 
 ##API
 
