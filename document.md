@@ -8,7 +8,7 @@
 
 ###[Introduction](./doc/comparison_introduction.md)
 ###[MUPD8](./doc/mupd8.md)
-###[Storm/](./doc/storm.md)
+###[Storm](./doc/storm.md)
 ###Spark Streaming
 
 ##API
