@@ -36,23 +36,23 @@ Samza状态处理的一个局限是,目前不支持只有一次语义——现�
 
 ##Partitioning and Parallelism
 
-Storm’s parallelism model is fairly similar to Samza’s. Both frameworks split processing into independent tasks that can run in parallel. Resource allocation is independent of the number of tasks: a small job can keep all tasks in a single process on a single machine; a large job can spread the tasks over many processes on many machines.
+Storm的并行模型非常类似于Samza的。两个框架把处理分割成可以并行运行的独立任务。资源分配依赖于任务的数量:一个小的作业可以把所有的任务运行在一个单个机器上的进程,一个大的工作可以把任务运行在许多机器的多个进程中。
 
-The biggest difference is that Storm uses one thread per task by default, whereas Samza uses single-threaded processes (containers). A Samza container may contain multiple tasks, but there is only one thread that invokes each of the tasks in turn. This means each container is mapped to exactly one CPU core, which makes the resource model much simpler and reduces interference from other tasks running on the same machine. Storm’s multithreaded model has the advantage of taking better advantage of excess capacity on an idle machine, at the cost of a less predictable resource model.
+最大的区别是,Storm默认每个任务一个线程,而Samza使用单线程的进程(容器)。Samza容器可以包含多个任务,但只有一个线程循环的调用每个任务。这意味着每个容器映射到一个CPU核心,使资源模型更简单,减少运行在同一台机器上其他任务的干扰。Storm的多线程模型的优势更好地利用过剩闲置的机器,以较少的成本预测资源模型。
 
-Storm supports dynamic rebalancing, which means adding more threads or processes to a topology without restarting the topology or cluster. This is a convenient feature, especially during development. We haven’t added this to Samza: philosophically we feel that this kind of change should go through a normal configuration management process (i.e. version control, notification, etc.) as it impacts production performance. In other words, the code and configuration of the jobs should fully recreate the state of the cluster.
+Storm支持动态调整并行度,这意味着为拓扑增加更多的线程或进程不会重新启动拓扑或集群。这是一个方便的特性,特别是在开发中。我们还没有添加这个特性到Samza:哲学上我们认为这种变化应该通过正常的配置管理过程(如版本控制、通知等)完成,因为它影响生产性能。换句话说,作业的代码和配置应充分再现集群的状态。
 
-When using a transactional spout with Trident (a requirement for achieving exactly-once semantics), parallelism is potentially reduced. Trident relies on a global ordering in its input streams — that is, ordering across all partitions of a stream, not just within one partion. This means that the topology’s input stream has to go through a single spout instance, effectively ignoring the partitioning of the input stream. This spout may become a bottleneck on high-volume streams. In Samza, all stream processing is parallel — there are no such choke points.
+当Trident使用一个事务Spout(要求实现只有一次语义),并行性可能降低。Triden输入流t依赖全局顺序—也就是说,所有分区的流的顺序,而不仅仅是在一个分区。这意味着拓扑的输入流必须经历一个Spout实例,有效地忽略输入流的分区。这个spout在大容量下可能成为瓶颈。在Samza,所有流处理是并行的,没有这样的瓶颈。
 
 ##Deployment & Execution
 
-A Storm cluster is composed of a set of nodes running a Supervisor daemon. The supervisor daemons talk to a single master node running a daemon called Nimbus. The Nimbus daemon is responsible for assigning work and managing resources in the cluster. See Storm’s Tutorial page for details. This is quite similar to YARN; though YARN is a bit more fully featured and intended to be multi-framework, Nimbus is better integrated with Storm.
+Storm集群由一组运行Supervisor守护进程节点组成。supervisor守护进程与一个名为nimbus守护进程主节点通信。nimbus守护进程负责分配工作和管理集群中的资源。有关详细信息,请参阅Storm教程页面。这非常类似于YARN;尽管YARN有更多的功能并可扩展为其他框架,nimbus更好得与Storm集成。
 
-Yahoo! has also released Storm-YARN. As described in this Yahoo! blog post, Storm-YARN is a wrapper that starts a single Storm cluster (complete with Nimbus, and Supervisors) inside a YARN grid.
+Yahoo!也发布了Storm-YARN。在雅虎博客有介绍,Storm-YARN是一个包装器,把一个Storm集群(完整的nimubs,supervisor)整合在一个yarn网格中。
 
-There are a lot of similarities between Storm’s Nimbus and YARN’s ResourceManager, as well as between Storm’s Supervisor and YARN’s Node Managers. Rather than writing our own resource management framework, or running a second one inside of YARN, we decided that Samza should use YARN directly, as a first-class citizen in the YARN ecosystem. YARN is stable, well adopted, fully-featured, and inter-operable with Hadoop. It also provides a bunch of nice features like security (user authentication), cgroup process isolation, etc.
+Storm的nimbus和YARN的ResourceManager有很多相似之处,以及Storm的supervisor和YARN的节点管理器之间也有很多相似。但不是写我们自己的资源管理框架,而是在YARN中运行,我们决定Samza应该直接使用YARN,YARN生态系统作为一个头等的公民。YARN是稳定的,只适应的,有很多特色,使用Hadoop的内部操作。它还提供了一些不错的特性,如安全(用户身份验证),cgroup处理隔离等。
 
-The YARN support in Samza is pluggable, so you can swap it for a different execution framework if you wish.
+Samza的YARN支持是可插拔的,所以如果你愿意你可以将它换成不同的执行框架。
 
 ##Language Support
 
@@ -62,11 +62,11 @@ Samza是用Java和Scala编写的。它是建立多语言支持,但目前只支�
 
 ##Workflow
 
-Storm provides modeling of topologies (a processing graph of multiple stages) in code. Trident provides a further higher-level API on top of this, including familiar relational-like operators such as filters, grouping, aggregation and joins. This means the entire topology is wired up in one place, which has the advantage that it is documented in code, but has the disadvantage that the entire topology needs to be developed and deployed as a whole.
+Storm提供了建模拓扑(多个阶段的加工图)的代码。Trident之上提供了一个进一步的高级API,包括类似的关系一样的操作如过滤器、分组、聚合和连接。这意味着整个拓扑连接在一个地方,它的优点是,它是记录在代码,但缺点是,整个拓扑需要开发和部署。
 
-In Samza, each job is an independent entity. You can define multiple jobs in a single codebase, or you can have separate teams working on different jobs using different codebases. Each job is deployed, started and stopped independently. Jobs communicate only through named streams, and you can add jobs to the system without affecting any other jobs. This makes Samza well suited for handling the data flow in a large company.
+在Samza中,每个作业都是一个独立的实体。您可以定义多个作业在一个代码库,或者你可以有单独的团队工作在不同的作业使用不同的代码库。每个作业单独部署启动和停止。工作流只能通过命名流,您可以添加工作系统在不影响任何其他工作。这使得Samza适合处理数据流在一个大公司。
 
-Samza’s approach can be emulated in Storm by connecting two separate topologies via a broker, such as Kafka. However, Storm’s implementation of exactly-once semantics only works within a single topology.
+Samza的方法可以模拟在Storm通过代理连接两个不同的拓扑结构,如Kafka。然而,仅一次Storm的实现语义只能在一个拓扑。
 
 ##Maturity
 
@@ -76,15 +76,16 @@ Samza很不成熟,但它是建立在坚实的组件之上。YARN是相当新的,
 
 ##Buffering & Latency
 
-Storm uses ZeroMQ for non-durable communication between bolts, which enables extremely low latency transmission of tuples. Samza does not have an equivalent mechanism, and always writes task output to a stream.
+Storm使用ZeroMQ进行bolt之间非持久化的通信,使极低延迟传输元组。Samza还没有一个相应机制,总是写任务输出到流。
 
-On the flip side, when a bolt is trying to send messages using ZeroMQ, and the consumer can’t read them fast enough, the ZeroMQ buffer in the producer’s process begins to fill up with messages. If this buffer grows too much, the topology’s processing timeout may be reached, which causes messages to be re-emitted at the spout and makes the problem worse by adding even more messages to the buffer. In order to prevent such overflow, you can configure a maximum number of messages that can be in flight in the topology at any one time; when that threshold is reached, the spout blocks until some of the messages in flight are fully processed. This mechanism allows back pressure, but requires topology.max.spout.pending to be carefully configured. If a single bolt in a topology starts running slow, the processing in the entire topology grinds to a halt.
+另一方面,当一个bolt使用ZeroMQ试图发送消息,并消费者读取消息速度不够快,ZeroMQ缓冲区在生产的过程中将填满信息。如果这个缓冲增长太多,拓扑的处理超时可能达到,导致消息被spout重新发射,使问题更糟糕的是通过添加更多的消息缓冲区。为了防止溢出,您可以配置一个最大数量的消息可以在拓扑处理中在任何一个时间,当达到这个门槛时,Spout停止发送,直到处理中的消息完全处理。这种机制允许背压,但需要精心配置topology.max.spout.pending。如果一个bolt在拓扑开始运行缓慢,处理在整个拓扑嘎然而止。
 
-A lack of a broker between bolts also adds complexity when trying to deal with fault tolerance and messaging semantics. Storm has a clever mechanism for detecting tuples that failed to be processed, but Samza doesn’t need such a mechanism because every input and output stream is fault-tolerant and replicated.
+bolt之间缺乏一个代理来试图处理容错，这样增加了复杂性和消息传递语义。Storm有一个聪明的机制探测元组没有被处理,但Samza并不需要这样一个机制,因为每个输入和输出流都可以容错和复制。
 
-Samza takes a different approach to buffering. We buffer to disk at every hop between a StreamTask. This decision, and its trade-offs, are described in detail on the Comparison Introduction page. This design decision makes durability guarantees easy, and has the advantage of allowing the buffer to absorb a large backlog of messages if a job has fallen behind in its processing. However, it comes at the price of slightly higher latency.
 
-As described in the workflow section above, Samza’s approach can be emulated in Storm, but comes with a loss in functionality.
+Samza采用不同的方法来缓存。我们缓冲磁盘在StreamTask每一跳之间。这一决定,它的利弊,介绍的比较详细在描述页面。这种设计决策使得持久化保障容易,并允许缓冲的优势吸收大量积压的消息如果工作已经落后于其处理。然而,它导致略高的延迟代价。
+
+如上面工作流部分所述,Samza的方法可以模拟Storm,但带有一个损失的功能。
 
 ##Isolation
 
